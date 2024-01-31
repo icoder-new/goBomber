@@ -33,6 +33,7 @@ goBomber currently supports the following service providers:
 - Somon
 - Avrang
 - Dastras
+- ShefTJ (by [@usmonzodasomon](https://github.com/usmonzodasomon))
 
 When you run goBomber, it will simultaneously send SMS messages to the target phone number using these service providers. The tool will display the status code received from each service provider.
 
